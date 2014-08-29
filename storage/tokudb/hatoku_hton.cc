@@ -344,6 +344,10 @@ static int tokudb_init_func(void *p) {
     TOKUDB_DBUG_ENTER("%p", p);
     int r;
 
+    // tokudb row status variable init
+    memset(&toku_row_status, 0, sizeof(toku_row_status));
+    toku_row_status.last_monitor_time = time(NULL);
+
     // 3938: lock the handlerton's initialized status flag for writing
     r = rw_wrlock(&tokudb_hton_initialized_lock);
     assert(r == 0);
@@ -1093,6 +1097,9 @@ static bool tokudb_show_engine_status(THD * thd, stat_print_fn * stat_print) {
     const int bufsiz = 1024;
     char buf[bufsiz];
 
+    double time_elapsed;
+    time_t current_time;
+
 #if MYSQL_VERSION_ID < 50500
     {
         sys_var * version = intern_find_sys_var("version", 0, false);
@@ -1170,7 +1177,38 @@ static bool tokudb_show_engine_status(THD * thd, stat_print_fn * stat_print) {
         uint64_t bytes_inserted = read_partitioned_counter(tokudb_primary_key_bytes_inserted);
         snprintf(buf, bufsiz, "%" PRIu64, bytes_inserted);
         STATPRINT("handlerton: primary key bytes inserted", buf);
-    }  
+
+        /* tokudb row status */
+        current_time = time(NULL);
+        time_elapsed = difftime(current_time, toku_row_status.last_monitor_time);
+        if (time_elapsed >= 2.00) {
+            toku_row_status.inserts = ((toku_row_status.inserted - toku_row_status.inserted_old) / time_elapsed);
+            toku_row_status.inserted_old = toku_row_status.inserted;
+
+            toku_row_status.updates = ((toku_row_status.updated - toku_row_status.updated_old) / time_elapsed);
+            toku_row_status.updated_old = toku_row_status.updated;
+
+            toku_row_status.deletes = ((toku_row_status.deleted - toku_row_status.deleted_old) / time_elapsed);
+            toku_row_status.deleted_old = toku_row_status.deleted;
+
+            toku_row_status.reads = ((toku_row_status.read - toku_row_status.read_old) / time_elapsed);
+            toku_row_status.read_old = toku_row_status.read;
+
+            toku_row_status.last_monitor_time = time(NULL);
+        }
+
+        snprintf(buf, bufsiz, "Number of rows inserted %" PRIu64 ", updated %" PRIu64 ", deleted %" PRIu64 ", read %" PRIu64 "\n"
+                "%.2f inserts/s, %.2f updates/s, %.2f deletes/s, %.2f reads/s",
+                toku_row_status.inserted,
+                toku_row_status.updated,
+                toku_row_status.deleted,
+                toku_row_status.read,
+                toku_row_status.inserts,
+                toku_row_status.updates,
+                toku_row_status.deletes,
+                toku_row_status.reads);
+        STATPRINT("row: operation status", buf);
+    }
     if (error) { my_errno = error; }
     TOKUDB_DBUG_RETURN(error);
 }

@@ -524,4 +524,27 @@ extern uint32_t tokudb_read_status_frequency;
 
 void toku_hton_update_primary_key_bytes_inserted(uint64_t row_size);
 
+/* row status */
+struct tokudb_row_status {
+    uint64_t inserted;
+    uint64_t inserted_old;
+    double inserts;
+
+    uint64_t updated;
+    uint64_t updated_old;
+    double updates;
+
+    uint64_t deleted;
+    uint64_t deleted_old;
+    double deletes;
+
+    uint64_t read;
+    uint64_t read_old;
+    double reads;
+
+    time_t last_monitor_time;
+};
+
+static tokudb_row_status toku_row_status;
+
 #endif //#ifdef _HATOKU_HTON
