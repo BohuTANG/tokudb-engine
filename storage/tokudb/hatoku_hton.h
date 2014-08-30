@@ -526,19 +526,19 @@ void toku_hton_update_primary_key_bytes_inserted(uint64_t row_size);
 
 /* row status */
 struct tokudb_row_status {
-    uint64_t inserted;
+    PARTITIONED_COUNTER inserted;
     uint64_t inserted_old;
     double inserts;
 
-    uint64_t updated;
+    PARTITIONED_COUNTER updated;
     uint64_t updated_old;
     double updates;
 
-    uint64_t deleted;
+    PARTITIONED_COUNTER deleted;
     uint64_t deleted_old;
     double deletes;
 
-    uint64_t read;
+    PARTITIONED_COUNTER read;
     uint64_t read_old;
     double reads;
 
